@@ -7,9 +7,6 @@ import ThemeToggle from './components/ThemeToggle'
 export default function App() {
   return (
     <div className="min-h-screen">
-      <header className="p-4 flex justify-end">
-        <ThemeToggle />
-      </header>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />

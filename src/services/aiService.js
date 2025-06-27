@@ -43,7 +43,7 @@ async function callMistral(prompt) {
     return JSON.parse(raw);
   } catch (e) {
     console.error('Failed to parse JSON from AI response:', raw);
-    throw new Error('Failed to parse JSON from AI response');
+    throw new Error('Failed to parse JSON from AI response', e);
   }
 }
 

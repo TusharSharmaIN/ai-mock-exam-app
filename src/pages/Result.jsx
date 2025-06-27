@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { evaluateAnswers } from '../services/aiService'
-import { Link } from 'react-router-dom'  // new import
+import Header from '../components/Header'
 
 export default function Result() {
   const [results, setResults] = useState([])
@@ -30,29 +30,15 @@ export default function Result() {
       .finally(() => setLoading(false))
   },)
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-t-green-600 dark:border-t-green-400 border-gray-200 dark:border-gray-700"></div>
-      </div>
-    )
-  }
+  if (loading) return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-4 border-t-green-600 dark:border-t-green-400 border-gray-200 dark:border-gray-700"></div></div>
 
   const totalPoints = results.reduce((sum, r) => sum + r.outOf, 0)
   const earned = results.reduce((sum, r) => sum + r.score, 0)
 
   return (
-    <div>
-      {/* Home link */}
-      <div className="p-4">
-        <Link to="/" className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-          <span className="text-xl">🏠</span>
-          <span>Home</span>
-        </Link>
-      </div>
-
-      {/* Results Card */}
-      <div className="p-4 max-w-3xl mx-auto bg-white dark:bg-gray-800 rounded shadow">
+    <div className="bg-white dark:bg-gray-900 min-h-screen">
+      <Header />
+      <div className="p-4 max-w-3xl mx-auto">
         <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">Your Result</h2>
         <p className="mb-2 text-gray-800 dark:text-gray-200">Score: {earned} / {totalPoints}</p>
         <div className="space-y-4">

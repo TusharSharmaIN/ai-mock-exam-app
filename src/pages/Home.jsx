@@ -25,10 +25,10 @@ export default function Home() {
     <div className="min-h-screen bg-white dark:bg-gray-900">
       <Header />
       <div className="flex flex-col items-center justify-center gap-4 p-4">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">AI Mock Exam Generator</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Quick Assessment Tool</h1>
         <input
           type="text"
-          placeholder="Enter Topic (e.g., OOP, Graphs, etc.)"
+          placeholder="Enter Topic (e.g., Modern History or Algebra)"
           className="border border-gray-300 dark:border-gray-600 p-2 w-full max-w-md rounded bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           value={topic}
           onChange={(e) => setTopic(e.target.value)}

@@ -1,10 +1,12 @@
-// Load API key from environment variable for security
+// src/services/aiService.js
 const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const BASE_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const LLM_MODEL = 'meta-llama/llama-4-maverick:free';
+const LLM_MODEL = 'mistralai/mistral-small-3.2-24b-instruct:free';
 
-async function callModel(prompt) {
-  const res = await fetch(BASE_URL, {
+async function callModel(userPrompt) {
+  const systemPrompt = `You are a JSON generator. Your ONLY output must be a single valid JSON array. Do NOT include any markdown, code blocks, or explanatory text. The JSON array must start with '[' and end with ']'.`;
+
+  const response = await fetch(BASE_URL, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${API_KEY}`,
@@ -13,52 +15,58 @@ async function callModel(prompt) {
     body: JSON.stringify({
       model: LLM_MODEL,
       messages: [
-        { role: 'system', content: 'You are a helpful exam generator.' },
-        { role: 'user', content: prompt }
-      ]
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: 0,
+      top_p: 1
     })
-  })
+  });
 
-  const json = await res.json()
-  const text = json.choices?.[0]?.message?.content || ''
+  console.dir(response.body);
 
-  // Strip markdown and other wrappers
-  const cleaned = text
-    .replace(/```json|```/g, '')   // remove markdown code blocks
-    .replace(/^\s*Sure[^\[]*/i, '') // remove any "Sure! Here's..." etc.
-    .trim()
-
-  const start = cleaned.indexOf('[')
-  const end = cleaned.lastIndexOf(']')
-  if (start === -1 || end === -1) {
-    console.error('Response did not include JSON array:', text)
-    throw new Error('Invalid response format: no JSON array found')
+  if (!response.ok) {
+    const errText = await response.text();
+    console.error('API Error', response.status, errText);
+    throw new Error(`API Error: ${response.status}`);
   }
 
-  const rawJson = cleaned.slice(start, end + 1).trim()
+  const { choices } = await response.json();
+  let text = (choices?.[0]?.message?.content || '').trim();
+
+  // Remove any stray backticks
+  text = text.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+
+  // Ensure valid JSON array
+  const first = text.indexOf('[');
+  const last = text.lastIndexOf(']');
+  if (first !== 0 || last !== text.length - 1) {
+    console.error('Unexpected format, text:', text);
+    throw new Error('Expected raw JSON array with no extra characters');
+  }
 
   try {
-    return JSON.parse(rawJson)
+    return JSON.parse(text);
   } catch (e) {
-    console.error('Failed to parse cleaned JSON:', rawJson)
-    throw new Error('Failed to parse JSON from AI response',e)
+    console.error('JSON parse error:', e, 'text:', text);
+    throw new Error('Failed to parse JSON');
   }
 }
 
-
 export async function generateQuestions(topic, difficulty, config) {
-  const { mcq = 0, short = 0, long = 0, code = 0 } = config || {};
-  const types = [];
-  if (mcq) types.push(`Generate ${mcq} MCQ questions`);
-  if (short) types.push(`Generate ${short} ShortAnswer questions`);
-  if (long) types.push(`Generate ${long} LongAnswer questions`);
-  if (code) types.push(`Generate ${code} Coding questions`);
+  const { mcq=0, short=0, long=0, code=0 } = config;
+  const specs = [];
+  if (mcq) specs.push(`${mcq} MCQ`);
+  if (short) specs.push(`${short} short-answer`);
+  if (long) specs.push(`${long} long-answer`);
+  if (code) specs.push(`${code} coding`);
 
-  const prompt = `Output only JSON. Do not include any explanations.\nTopic: ${topic}\nDifficulty: ${difficulty}\n${types.join('\n')}\nReturn an array in JSON with fields: type, question, options (for MCQ), answer, explanation.`;
-  return await callModel(prompt);
+  const userPrompt = `Generate exactly one JSON array of question objects. Each object must have: type, question, options (if MCQ), answer, explanation.\n` +
+                     `Topic: ${topic}\nDifficulty: ${difficulty}\nInclude: ${specs.join(', ')} questions.`;
+  return callModel(userPrompt);
 }
 
 export async function evaluateAnswers(userAnswers) {
-  const prompt = `Output only JSON array.\nEvaluate these answers (assign scores out of respective points). For each answer, return: type, question, userAnswer, score, outOf, feedback, suggestion.\nData: ${JSON.stringify(userAnswers)}`;
-  return await callModel(prompt);
+  const userPrompt = `Given these answers ${JSON.stringify(userAnswers)}, output exactly one JSON array of objects with: type, question, userAnswer, score, outOf, feedback, suggestion.`;
+  return callModel(userPrompt);
 }
